@@ -112,11 +112,12 @@ defmodule Scrivener.HTML do
       args: [conn, merged_opts[:action]] ++ args,
       params: params
   end
-  def pagination_links(%Scrivener.Page{} = paginator), do: pagination_links(nil, paginator, [], [])
-  def pagination_links(%Scrivener.Page{} = paginator, opts), do: pagination_links(nil, paginator, [], opts)
-  def pagination_links(conn, %Scrivener.Page{} = paginator), do: pagination_links(conn, paginator, [], [])
-  def pagination_links(conn, paginator, [{_, _} | _] = opts), do: pagination_links(conn, paginator, [], opts)
-  def pagination_links(conn, paginator, [_ | _] = args), do: pagination_links(conn, paginator, args, [])
+  def pagination_links(paginator), do: pagination_links(nil,  paginator, [], [])
+  def pagination_links(nil,  paginator), do: pagination_links(nil,  paginator, [], [])
+  def pagination_links(paginator, [{_, _} | _] = opts), do: pagination_links(nil,  paginator, [], opts)
+  def pagination_links(%Plug.Conn{} = conn, paginator), do: pagination_links(conn, paginator, [], [])
+  def pagination_links(%Plug.Conn{} = conn, paginator, [{_, _} | _] = opts), do: pagination_links(conn, paginator, [], opts)
+  def pagination_links(%Plug.Conn{} = conn, paginator, [_ | _] = args), do: pagination_links(conn, paginator, args, [])
 
   defp find_path_fn(nil, _path_args), do: &Default.path/3
   defp find_path_fn([], _path_args), do: fn _, _, _ -> nil end
