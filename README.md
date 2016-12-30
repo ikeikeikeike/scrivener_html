@@ -7,23 +7,34 @@ Helpers built to work with [Scrivener](https://github.com/drewolson/scrivener)'s
 Add to `mix.exs`
 
 ```elixir
+  # add :scrivener_html to deps
   defp deps do
     [
       # ...
-      {:scrivener_html, "~> 1.0"}
+      {:scrivener_html, "~> 1.1"}
+      # ...
+    ]
+  end
+
+  # add :scrivener_html to applications list
+  defp application do
+    [
+      # ...
+      applications: [ ..., :scrivener_html, ... ]
       # ...
     ]
   end
 ```
 
-For use with Phoenix.HTML, configure the `:routes_helper` module like the following:
+For use with Phoenix.HTML, configure the `:routes_helper` module in `config/config.exs`
+like the following:
 
 ```elixir
 config :scrivener_html,
   routes_helper: MyApp.Router.Helpers
 ```
 
-Import to you view.
+Import to your view.
 
 ```elixir
 defmodule MyApp.UserView do
@@ -37,10 +48,23 @@ end
 Use in your template.
 
 ```elixir
-<%= pagination_links @conn, @page %>
+<%= pagination_links @page %>
 ```
 
 Where `@page` is a `%Scrivener.Page{}` struct returned from `Repo.paginate/2`.
+So the function in your controller is like:
+
+```elixir
+#  params = %{"page" => _page}
+def index(conn, params) do
+  users = MyApp.User
+          # Other query conditions can be done here
+          |> MyApp.Repo.paginate(params)
+  render conn, :index, users: users
+end
+```
+
+### Scopes and URL Parameters
 
 If your resource has any url parameters to be supplied, you should provide them as the 3rd parameter. For example, given a scope like:
 
@@ -48,22 +72,39 @@ If your resource has any url parameters to be supplied, you should provide them 
 scope "/:locale", App do
   pipe_through [:browser]
 
-  get "/page", PageController, :index
+  get "/page", PageController, :index, as: :pages
+  get "/pages/:id", PageController, :show, as: :page
 end
 ```
 
-You would need to pass in the `:locale` parameter like so:
+You would need to pass in the `:locale` parameter and `:path` option like so:
 
 ```elixir
-<%= pagination_links @conn, @page, ["en"] %>
+<%= pagination_links @page, ["en"], path: &pages_path/4 %>
 ```
+
+With a nested resource, simply add it to the list:
+
+```elixir
+<%= pagination_links @page, ["en", @page_id], path: &page_path/4, action: :show %>
+```
+
+#### Query String Parameters
 
 Any additional query string parameters can be passed in as well.
 
 ```elixir
-<%= pagination_links @conn, @page, ["en"], some_parameter: "data" %>
+<%= pagination_links @page, ["en"], some_parameter: "data" %>
 <%# OR IF NO URL PARAMETERS %>
-<%= pagination_links @conn, @page, some_parameter: "data" %>
+<%= pagination_links @page, some_parameter: "data" %>
+```
+
+### Custom Actions
+
+If you need to hit a different action other than `:index`, simply pass the action name to use in the url helper.
+
+```elixir
+<%= pagination_links @page, action: :show %>
 ```
 
 ## Customizing Output
@@ -71,7 +112,13 @@ Any additional query string parameters can be passed in as well.
 Below are the defaults which are used without passing in any options.
 
 ```elixir
-<%= pagination_links @conn, @page, distance: 5, next: ">>", previous: "<<", first: true, last: true, view_style: :bootstrap %>
+<%= pagination_links @page, distance: 5, next: ">>", previous: "<<", first: true, last: true, view_style: :bootstrap %>
+```
+
+To prevent HTML escaping (i.e. seeing things like `&lt;` on the page), simply use `Phoenix.HTML.raw/1` for any `&amp;` strings passed in, like so:
+
+```elixir
+<%= pagination_links @page, previous: Phoenix.HTML.raw("&leftarrow;"), next: Phoenix.HTML.raw("&rightarrow;") %>
 ```
 
 There are three view styles currently supported:
@@ -82,6 +129,8 @@ There are three view styles currently supported:
   by Foundation for Sites 6.x.
 - `:semantic` This styles the pagination links in a manner that is expected by
   Semantic UI 2.x.
+- `:bootstrap_v4` This styles the pagination links in a manner that
+  is expected by Bootstrap 4.x.
 
 For custom HTML output, see `Scrivener.HTML.raw_pagination_links/2`.
 
